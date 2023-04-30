@@ -3,10 +3,10 @@ import cv2 as cv
 
 # The given video and calibration data
 input_file = 'data/mini_checkerboard.mp4'
-K = np.array([[1.07160579e+03, 0.00000000e+00, 6.37902652e+02],
- [0.00000000e+00, 1.07218239e+03, 3.27114520e+02],
- [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
-dist_coeff = np.array([-6.92131235e-02,  1.00257161e+00, -2.66928277e-03, -1.96774306e-03, -2.89985756e+00])
+K = np.array([[998.88869556,   0.        , 647.75278145],
+ [0.         ,  998.97746916, 355.98516383],
+ [0.         ,  0.          , 1.          ]])
+dist_coeff = np.array([0.00372134,  0.14183638, -0.00169212, -0.00232984, -0.05718726])
 board_pattern = (8, 6)
 board_cellsize = 0.025
 board_criteria = cv.CALIB_CB_ADAPTIVE_THRESH + cv.CALIB_CB_NORMALIZE_IMAGE + cv.CALIB_CB_FAST_CHECK
@@ -16,8 +16,8 @@ video = cv.VideoCapture(input_file)
 assert video.isOpened(), 'Cannot read the given input, ' + input_file
 
 # Prepare a 3D box for simple AR
-box_lower = board_cellsize * np.array([[4, 2,  0], [5, 2,  0], [5, 4,  0], [4, 4,  0]])
-box_upper = board_cellsize * np.array([[4, 2, -1], [5, 2, -1], [5, 4, -1], [4, 4, -1]])
+box_lower = board_cellsize * np.array([[1, 1,  0], [6, 1,  0], [6, 4,  0], [1, 4,  0]])
+box_upper = board_cellsize * np.array([[1, 1, -1], [6, 1, -1], [6, 4, -1], [1, 4, -1]])
 
 # Prepare 3D points on a chessboard
 obj_points = board_cellsize * np.array([[c, r, 0] for r in range(board_pattern[1]) for c in range(board_pattern[0])])
@@ -37,10 +37,10 @@ while True:
         # Draw the box on the image
         line_lower, _ = cv.projectPoints(box_lower, rvec, tvec, K, dist_coeff)
         line_upper, _ = cv.projectPoints(box_upper, rvec, tvec, K, dist_coeff)
-        cv.polylines(img, [np.int32(line_lower)], True, (255, 0, 0), 2)
+        # cv.polylines(img, [np.int32(line_lower)], True, (255, 0, 0), 2)
         cv.polylines(img, [np.int32(line_upper)], True, (0, 0, 255), 2)
-        for b, t in zip(line_lower, line_upper):
-            cv.line(img, np.int32(b.flatten()), np.int32(t.flatten()), (0, 255, 0), 2)
+        # for b, t in zip(line_lower, line_upper):
+        #     cv.line(img, np.int32(b.flatten()), np.int32(t.flatten()), (0, 255, 0), 2)
 
         # Print the camera position
         R, _ = cv.Rodrigues(rvec) # Alternative) scipy.spatial.transform.Rotation
