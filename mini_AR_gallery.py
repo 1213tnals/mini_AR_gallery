@@ -3,6 +3,12 @@ import cv2 as cv
 
 # The given video and calibration data
 input_file = 'data/mini_checkerboard.mp4'
+photo_file = 'data/1.jpg'
+
+photo = cv.imread(photo_file)
+height, width, _ = photo.shape
+photo_size=(width/100,height/100)
+
 K = np.array([[998.88869556,   0.        , 647.75278145],
  [0.         ,  998.97746916, 355.98516383],
  [0.         ,  0.          , 1.          ]])
@@ -20,25 +26,31 @@ box_lower = board_cellsize * np.array([[1, 1,  0], [6, 1,  0], [6, 4,  0], [1, 4
 box_upper = board_cellsize * np.array([[1, 1, -1], [6, 1, -1], [6, 4, -1], [1, 4, -1]])
 
 # Prepare 3D points on a chessboard
-obj_points = board_cellsize * np.array([[c, r, 0] for r in range(board_pattern[1]) for c in range(board_pattern[0])])
+obj_points = board_cellsize * np.array([[c, r, 0] for r in range(board_pattern[1]) for c in range(board_pattern[0])])  # 8x6 행렬 생성
+photo_points = board_cellsize * np.array([[1, 1, -1], [1+photo_size[0], 1, -1], [1+photo_size[0], 1+photo_size[1], -1], [1+0, 1+photo_size[1], -1],])
 
 # Run pose estimation
 while True:
     # Read an image from the video
-    valid, img = video.read()
+    valid, board = video.read()
     if not valid:
         break
 
     # Estimate the camera pose
-    complete, img_points = cv.findChessboardCorners(img, board_pattern, board_criteria)
+    complete, board_points = cv.findChessboardCorners(board, board_pattern, board_criteria)
     if complete:
-        ret, rvec, tvec = cv.solvePnP(obj_points, img_points, K, dist_coeff)
+        ret, rvec, tvec = cv.solvePnP(obj_points, board_points, K, dist_coeff)        # obj: 보드의 3D 좌표 / board_point: 체스보드나 물체의 2D 좌표, 이후 왜곡 고려
+        # ret, rvec, tvec = cv.solvePnP(photo_points, board_points, K, dist_coeff)    # 체커보드와 이미지 사이의 R, T 행렬을 구함
+
+        #H, _ = cv.findHomography(box_upper, photo_points)
+        #img_rectify = cv.warpPerspective(photo, H, photo_size)
 
         # Draw the box on the image
-        line_lower, _ = cv.projectPoints(box_lower, rvec, tvec, K, dist_coeff)
-        line_upper, _ = cv.projectPoints(box_upper, rvec, tvec, K, dist_coeff)
+        # line_lower, _ = cv.projectPoints(box_lower, rvec, tvec, K, dist_coeff)
+        # line_upper, _ = cv.projectPoints(box_upper, rvec, tvec, K, dist_coeff)
+        photo_upper, _ = cv.projectPoints(photo_points, rvec, tvec, K, dist_coeff)
         # cv.polylines(img, [np.int32(line_lower)], True, (255, 0, 0), 2)
-        cv.polylines(img, [np.int32(line_upper)], True, (0, 0, 255), 2)
+        cv.polylines(board, [np.int32(photo_upper)], True, (0, 0, 255), 2)
         # for b, t in zip(line_lower, line_upper):
         #     cv.line(img, np.int32(b.flatten()), np.int32(t.flatten()), (0, 255, 0), 2)
 
@@ -46,10 +58,11 @@ while True:
         R, _ = cv.Rodrigues(rvec) # Alternative) scipy.spatial.transform.Rotation
         p = (-R.T @ tvec).flatten()
         info = f'XYZ: [{p[0]:.3f} {p[1]:.3f} {p[2]:.3f}]'
-        cv.putText(img, info, (10, 25), cv.FONT_HERSHEY_DUPLEX, 0.6, (0, 255, 0))
+        cv.putText(board, info, (10, 25), cv.FONT_HERSHEY_DUPLEX, 0.6, (0, 255, 0))
 
     # Show the image and process the key event
-    cv.imshow('Pose Estimation (Chessboard)', img)
+    cv.imshow('Pose Estimation (Chessboard)', board)
+    #cv.imshow('photo', img_rectify)
     key = cv.waitKey(10)
     if key == ord(' '):
         key = cv.waitKey()
